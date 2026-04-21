@@ -1,0 +1,108 @@
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Union, Optional, Protocol, Mapping
+from app.config import settings
+from enum import Enum
+@dataclass
+class VerifyTokenOptions:
+    """
+    Options to configure verify_token.
+
+    Attributes:
+        audience (Union[str, List[str], None]): An audience or list of audiences to verify against.
+        authorized_parties (Optional[List[str]]): An allowlist of origins to verify against.
+        clock_skew_in_ms (int): Allowed time difference (in milliseconds) between the Clerk server (which generates the token)
+                                and the clock of the user's application server when validating a token. Defaults to 5000 ms.
+        jwt_key (Optional[str]): PEM Public Key used to verify the session token in a networkless manner.
+        secret_key (Optional[str]): The Clerk secret key from the API Keys page in the Clerk Dashboard.
+        api_url (str): The Clerk Backend API endpoint. Defaults to 'https://api.clerk.com'
+        api_version (str): The version passed to the Clerk API. Defaults to 'v1'.
+    """
+
+    audience: Optional[Union[str, List[str]]] = None
+    authorized_parties: Optional[List[str]] = None
+    clock_skew_in_ms: int = 5000
+    jwt_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    machine_secret_key: Optional[str] = None
+    api_url: str = 'https://api.clerk.com'
+    api_version: str = 'v1'
+    issuer: str = settings.CLERK_ISSUER
+
+class TokenVerificationErrorReason(Enum):
+
+    JWK_FAILED_TO_LOAD = (
+        'jwk-failed-to-load',
+        'Failed to load JWKS from Clerk Backend API. Contact support@clerk.com.'
+    )
+
+    JWK_REMOTE_INVALID = (
+        'jwk-remote-invalid',
+        'The JWKS endpoint did not contain any signing keys. Contact support@clerk.com.'
+    )
+
+    JWK_FAILED_TO_RESOLVE = (
+        'jwk-failed-to-resolve',
+        'Failed to resolve JWK. Public Key is not in the proper format.'
+    )
+
+    JWK_KID_MISMATCH = (
+        'jwk-kid-mismatch',
+        'Unable to find a signing key in JWKS that matches the kid of the provided session token.'
+    )
+
+    TOKEN_EXPIRED = (
+        'token-expired',
+        'Token has expired and is no longer valid.'
+    )
+
+    TOKEN_INVALID = (
+        'token-invalid',
+        'Token is invalid and could not be verified.'
+    )
+
+    TOKEN_INVALID_AUTHORIZED_PARTIES = (
+        'token-invalid-authorized-parties',
+        'Authorized party claim (azp) does not match any of the authorized parties.',
+    )
+
+    TOKEN_INVALID_AUDIENCE = (
+        'token-invalid-audience',
+        'Token audience claim (aud) does not match one of the expected audience values.',
+    )
+
+    TOKEN_IAT_IN_THE_FUTURE = (
+        'token-iat-in-the-future',
+        'Token Issued At claim (iat) represents a time in the future.'
+        )
+
+    TOKEN_NOT_ACTIVE_YET = (
+        'token-not-active-yet',
+        'Token is not yet valid. Not Before claim (nbf) is in the future.'
+    )
+
+    TOKEN_INVALID_SIGNATURE = (
+        'token-invalid-signature',
+        'Token signature is invalid and could not be verified.'
+    )
+
+    SECRET_KEY_MISSING = (
+        'secret-key-missing',
+        'Missing Clerk Secret Key. Go to https://dashboard.clerk.com and get your key for your instance.'
+    )
+
+    SERVER_ERROR = (
+        'server-error',
+        'An unexpected error occurred while verifying the token. Please try again later'
+    )
+
+    INVALID_TOKEN_TYPE = (
+        'invalid-token-type',
+        'The provided token is not a valid Clerk token type. Expected one of: session, machine, oauth, or api key.'
+    )
+
+class TokenVerificationError(Exception):
+    """Exception raised when token verification fails"""
+
+    def __init__(self, reason: TokenVerificationErrorReason):
+        self.reason = reason
+        super().__init__(self.reason.value[1])
