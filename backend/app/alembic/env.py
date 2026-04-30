@@ -29,6 +29,22 @@ def get_url() -> str:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Called by Alembic's autogenerate for every object it finds in the DB.
+    Returning False tells Alembic to leave that object alone — don't generate
+    drop/create statements for it.
+
+    `reflected=True` means Alembic found this object in the live DB but it's
+    not in your SQLModel metadata. That's exactly the case for LangChain's
+    tables — they're created by PGVector, not by your models.
+    """
+    LANGCHAIN_TABLES = {"langchain_pg_collection", "langchain_pg_embedding"}
+
+    if type_ == "table" and name in LANGCHAIN_TABLES:
+        return False  # don't touch these
+
+    return True  # let Alembic manage everything else normally
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -71,7 +87,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():

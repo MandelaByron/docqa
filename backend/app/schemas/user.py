@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-
+from .workspace import WorkspaceRead, WorkspaceBase
 from pydantic import BaseModel, ConfigDict
 
 
@@ -29,6 +29,8 @@ class UserRead(UserBase):
     onboarding_completed: bool
     storage_used_bytes: int
     created_at: datetime
+
+    workspaces: list[WorkspaceRead]
 
 
 class UserUpdate(BaseModel):

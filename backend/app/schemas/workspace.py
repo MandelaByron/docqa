@@ -7,9 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 class WorkspaceBase(BaseModel):
     """Shared workspace fields."""
-
     name: str
-    slug: str
 
 
 class WorkspaceCreate(BaseModel):

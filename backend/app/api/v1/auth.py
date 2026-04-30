@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 from app.api.deps import get_db
-from app.models.user import User
+from app.models.user import User, Workspace
 from app.api.deps import verify_clerk_webhook
 from fastapi.responses import JSONResponse
 from app.api.deps import get_current_user
@@ -23,14 +23,16 @@ def clerk_webhook(payload: dict = Depends(verify_clerk_webhook), db: Session = D
         if existing_user:
             return {"message": "User already exists"}
         
+        full_name =f'{data["first_name"]} {data["last_name"]}' 
         user = User(
             clerk_user_id=data["id"],
+            full_name=full_name,
             email=data["email_addresses"][0]["email_address"]
         )
         db.add(user)
         # Create default workspace
-        #workspace = Workspace(owner_id=user.id, name=f"{user.full_name}'s workspace")
-        #db.add(workspace)
+        workspace = Workspace(owner_id=user.id, name=f"{user.full_name}'s workspace")
+        db.add(workspace)
         db.commit()
 
         return JSONResponse(status_code=200, content={"message": "User created successfully"})

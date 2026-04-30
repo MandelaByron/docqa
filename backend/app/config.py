@@ -3,12 +3,17 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str
+    upload_dir : str = "uploads"
+    anthropic_api_key: str
+    voyage_api_key: str
+
 
     CLERK_WEBHOOK_SIGNING_SECRET: str
     CLERK_JWKS_URL: str
     CLERK_SECRET_KEY: str
     CLERK_ISSUER: str
     CLERK_JWKS_PUBLIC_KEY: str | None
+
     # redis_url: str
     # clerk_secret_key: str
     # clerk_publishable_key: str
