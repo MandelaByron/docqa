@@ -138,44 +138,44 @@ async def delete_document(
 
 # ── Ask (RAG) ─────────────────────────────────────────────────────────────────
 
-@router.post("/ask")
-async def ask_question(
-    body: AskRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
-):
-    """
-    Streams an LLM answer grounded in the selected documents.
+# @router.post("/ask")
+# async def ask_question(
+#     body: AskRequest,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_async_db),
+# ):
+#     """
+#     Streams an LLM answer grounded in the selected documents.
 
-    SSE response format:
-      data: {"type": "citations", "data": [...]}   ← sent first, before any tokens
-      data: {"type": "delta",     "data": "token"} ← repeated N times
-      data: {"type": "done"}                        ← signals end of stream
-    """
-    # Verify documents exist and are ready before starting the expensive stream.
-    for doc_id in body.document_ids:
-        doc = await db.get(Document, doc_id)
-        if not doc:
-            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
-        if doc.status != "ready":
-            raise HTTPException(
-                status_code=409,
-                detail=f"Document '{doc.filename}' is not ready (status: {doc.status})",
-            )
+#     SSE response format:
+#       data: {"type": "citations", "data": [...]}   ← sent first, before any tokens
+#       data: {"type": "delta",     "data": "token"} ← repeated N times
+#       data: {"type": "done"}                        ← signals end of stream
+#     """
+#     # Verify documents exist and are ready before starting the expensive stream.
+#     for doc_id in body.document_ids:
+#         doc = await db.get(Document, doc_id)
+#         if not doc:
+#             raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+#         if doc.status != "ready":
+#             raise HTTPException(
+#                 status_code=409,
+#                 detail=f"Document '{doc.filename}' is not ready (status: {doc.status})",
+#             )
 
-    # rag.ask() returns the (stream_generator, citations) tuple immediately.
-    # The generator is lazy — Claude doesn't start generating until the
-    # event_generator below begins iterating over it.
-    stream, citations = await rag.ask(body.question, body.document_ids, db)
+#     # rag.ask() returns the (stream_generator, citations) tuple immediately.
+#     # The generator is lazy — Claude doesn't start generating until the
+#     # event_generator below begins iterating over it.
+#     stream, citations = await rag.ask(body.question, body.document_ids, db)
 
-    async def event_generator():
-        # Citations go first so the frontend can render source chips
-        # before the answer text starts arriving.
-        yield f"data: {json.dumps({'type': 'citations', 'data': [c.model_dump(mode='json') for c in citations]})}\n\n"
+#     async def event_generator():
+#         # Citations go first so the frontend can render source chips
+#         # before the answer text starts arriving.
+#         yield f"data: {json.dumps({'type': 'citations', 'data': [c.model_dump(mode='json') for c in citations]})}\n\n"
 
-        async for token in stream:
-            yield f"data: {json.dumps({'type': 'delta', 'data': token})}\n\n"
+#         async for token in stream:
+#             yield f"data: {json.dumps({'type': 'delta', 'data': token})}\n\n"
 
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+#         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+#     return StreamingResponse(event_generator(), media_type="text/event-stream")

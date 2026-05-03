@@ -29,7 +29,7 @@ class ChunkRead(BaseModel):
 
 class AskRequest(BaseModel):
     question: str
-    document_ids: list[UUID]   # which documents to search against
+    document_ids: list[UUID] = []  # ← optional, defaults to empty list  
 
 
 class CitationRead(BaseModel):
