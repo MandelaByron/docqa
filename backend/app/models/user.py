@@ -1,10 +1,12 @@
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID, uuid4
-from typing import List
-from sqlalchemy import Column, DateTime, String, func
+from sqlalchemy import Column, DateTime, String, func, UniqueConstraint, Enum
 from sqlmodel import Field, Relationship, SQLModel, Text
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import JSONB
+
+from enum import StrEnum
 
 
 class User(SQLModel, table=True):
@@ -90,7 +92,7 @@ class Document(SQLModel, table=True):
     uploaded_by: UUID = Field(foreign_key="user.id", nullable=False)
 
     filename: str = Field(nullable=False)
-    file_path: str = Field(nullable=False)
+    file_url: str = Field(nullable=True)
     mime_type: str = Field(nullable=False)
     size_bytes: int = Field(nullable=False, default=0)
 
@@ -109,7 +111,116 @@ class Document(SQLModel, table=True):
     # Relationships — DocumentChunk is gone, LangChain owns that layer.
     workspace: Workspace | None = Relationship()
 
-    # NOTE: No `chunks` relationship anymore. If you ever need to delete
-    # a document's vectors, you'll query langchain_pg_embedding directly
-    # by filtering cmetadata->>'document_id'. See ingestion.py for a helper.
 
+class Chat(SQLModel, table=True):
+    """
+    One chat session per document (enforced by the unique constraint on
+    document_id). The chat ID becomes the stable URL slug — /chat/{id}.
+ 
+    Message history is stored separately by the AI SDK on the frontend
+    (or in a messages table when you add persistence). This record is
+    purely the binding between a document and its conversation.
+    """
+    __tablename__ = "chats"
+    __table_args__ = (
+        # Enforce 1:1 at the DB level — not just application logic
+        UniqueConstraint("document_id", name="uq_chat_document"),
+    )
+ 
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    document_id: UUID = Field(foreign_key="documents.id", nullable=False, index=True)
+    created_by: UUID = Field(foreign_key="user.id", nullable=False)
+ 
+    # Auto-generated from the document filename if not provided
+    title: str = Field(nullable=False)
+ 
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    )
+ 
+    # Relationship — lazy by default, use selectinload if you need it in queries
+    document: Optional["Document"] = Relationship()
+
+
+class MessageRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+    TOOL = "tool"
+
+class MessageEventType(StrEnum):
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
+    SYSTEM_PROMPT = "system_prompt"
+    RETRIEVAL = "retrieval"
+    REASONING = "reasoning"
+    STREAM_DELTA = "stream_delta"
+class MessageStatus(StrEnum):
+    PENDING = "pending"
+    STREAMING = "streaming"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class Message(SQLModel, table=True):
+    __tablename__ = "messages"
+    id : UUID = Field(default_factory=uuid4, primary_key=True)
+    chat_id: UUID = Field(foreign_key="chats.id", nullable=False, index=True)
+    user_id : UUID | None = Field(foreign_key="user.id", default=None, index=True)
+
+
+    status : MessageStatus = Field(
+        sa_column=Column(Enum(MessageStatus))
+    )
+    role: MessageRole = Field(        
+        sa_column=Column(              
+            Enum(MessageRole),      
+            index=True                 
+            )
+        )
+    
+    content: str = Field(sa_column=Column(String))
+
+    ui_message: dict = Field(sa_column=Column(JSONB, nullable=False))
+
+    pydantic_ai_message: dict = Field(
+        sa_column=Column(JSONB, nullable=False),
+        description="Serialized pydantic-ai ModelMessage for agent message_history",
+    )
+
+    created_at: datetime = Field(
+    sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+)
+
+    parent_message_id: Optional[UUID] = Field(
+        foreign_key="messages.id",
+        default=None,
+        index=True,
+    )
+    prompt_tokens: Optional[int] = Field(
+        default=None,
+        ge=0,
+    )
+
+    completion_tokens: Optional[int] = Field(
+        default=None,
+        ge=0,
+    )
+
+    total_tokens: Optional[int] = Field(
+        default=None,
+        ge=0,
+    )
+# class MessageEvent(SQLModel, table=True):
+#     __tablename__ = "message_events"
+#     id: UUID = Field(default_factory=uuid4, primary_key=True)
+
+#     message_id: UUID = Field(foreign_key="messages.id", nullable=False, index=True)
+
+#     event_type : MessageEventType = Field(
+#         sa_column=Column(Enum(MessageEventType))
+#     )
+#     payload: dict = Field(sa_column=Column(JSONB, nullable=False))
+
+#     created_at: datetime = Field(
+#      sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+#     )

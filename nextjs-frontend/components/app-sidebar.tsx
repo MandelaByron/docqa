@@ -1,5 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+
 import {
   Sidebar,
   SidebarContent,
@@ -9,18 +13,29 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarGroupLabel,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { MessageSquarePlus, Search, LayoutGrid } from "lucide-react"
+import { MessageSquarePlus,MessagesSquare, Search, LayoutGrid } from "lucide-react"
 import { SignInButton } from "@clerk/nextjs"
 import { useUser } from "@clerk/nextjs"
 import { UserButton } from "@clerk/nextjs";
+import { useApiClient } from "@/hooks/use-api-client"
+import { cn } from "@/lib/utils"
 
 const navItems = [
   { label: "New Chat",   icon: MessageSquarePlus, href: "#" },
   { label: "Search",     icon: Search,            href: "#" },
   { label: "Workspaces", icon: LayoutGrid,         href: "#" },
 ]
+
+interface ChatRead {
+  id: string
+  document_id: string
+  title: string
+  created_at: string
+}
+ 
 
 // ─── Unauthenticated footer ───────────────────────────────────────────────────
 function GuestFooter() {
@@ -99,6 +114,70 @@ function UserFooter() {
   )
 }
 
+// ─── Chat list ────────────────────────────────────────────────────────────────
+ 
+function ChatList() {
+  const api = useApiClient()
+  const pathname = usePathname()
+  const [chats, setChats] = useState<ChatRead[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+ 
+  useEffect(() => {
+    api.get<ChatRead[]>("/chats/fetch_chats")
+      .then(setChats)
+      .catch(() => {})
+      .finally(() => setIsLoading(false))
+  // Re-fetch when the user navigates (e.g. after creating a new chat)
+  }, [pathname])
+ 
+  if (isLoading) {
+    return (
+      <div className="px-4 py-2 space-y-2 group-data-[collapsible=icon]:hidden">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-4 rounded bg-white/4 animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+ 
+  if (chats.length === 0) {
+    return (
+      <p className="px-4 py-2 text-[11.5px] text-white/20 group-data-[collapsible=icon]:hidden">
+        No chats yet
+      </p>
+    )
+  }
+ 
+  return (
+    <SidebarMenu className="gap-0">
+      {chats.map((chat) => {
+        const isActive = pathname === `/chat/${chat.id}`
+        return (
+          <SidebarMenuItem key={chat.id}>
+            <SidebarMenuButton
+              asChild
+              tooltip={chat.title}
+              className={cn(
+                "relative h-8 rounded-lg px-2.5 text-[13px] transition-all duration-150",
+                isActive
+                  ? "text-white/90 bg-white/4"
+                  : "text-white/45 hover:text-white/80 hover:bg-white/5",
+              )}
+            >
+              <Link href={`/chat/${chat.id}`} className="flex items-center gap-2.5 min-w-0">
+                <MessagesSquare
+                  className="h-[15px] w-[15px] shrink-0 text-white/30"
+                  strokeWidth={1.7}
+                />
+                <span className="truncate">{chat.title}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
+  )
+}
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 export function AppSidebar() {
   const { isLoaded, isSignedIn } = useUser()
@@ -146,6 +225,15 @@ export function AppSidebar() {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+        {/* Chat history — only shown when signed in */}
+        {isSignedIn && (
+          <SidebarGroup className="p-0 mt-4">
+            <SidebarGroupLabel className="px-2 mb-1 text-[11px] font-medium tracking-widest uppercase text-white/20 group-data-[collapsible=icon]:hidden">
+              Recent chats
+            </SidebarGroupLabel>
+            <ChatList />
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       {/* Footer — switches on auth state, nothing renders while Clerk loads */}

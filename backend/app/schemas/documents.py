@@ -1,13 +1,25 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, HttpUrl
 from uuid import UUID
 from typing import Optional
 from datetime import datetime
 
+
+class DocumentCreate(BaseModel):
+    """
+    Payload the frontend sends after Uploadthing completes the client-side upload.
+    The three fields mirror exactly what Uploadthing's onClientUploadComplete
+    callback exposes: file.ufsUrl, file.name, file.type.
+    """
+    url: HttpUrl
+    filename: str
+    mime_type: str
+    
 class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     workspace_id: UUID
+    file_url: str 
     filename: str
     mime_type: str
     size_bytes: int

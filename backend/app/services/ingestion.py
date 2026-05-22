@@ -33,6 +33,7 @@ first time it connects, if they don't already exist:
 import json
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
+import httpx
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -98,14 +99,9 @@ def ingest_document(document_id: UUID, db: Session) -> None:
         doc.status = "processing"
         db.commit()
 
-        # ------------------------------------------------------------------
-        # Step 1: Load
-        # PyPDFLoader reads the PDF page by page and returns a list of
-        # LangChain Document objects. Each Document has:
-        #   .page_content — the extracted text for that page
-        #   .metadata     — {"source": "/path/to/file", "page": 0, ...}
-        # ------------------------------------------------------------------
-        loader = PyPDFLoader(doc.file_path)
+
+
+        loader = PyPDFLoader(doc.file_url)
         pages = loader.load()
 
         if not any(p.page_content.strip() for p in pages):
@@ -117,13 +113,6 @@ def ingest_document(document_id: UUID, db: Session) -> None:
         # Step 3: Inject your metadata
         # This is the critical step that makes scoped retrieval possible.
         # LangChain will store chunk.metadata as JSONB in cmetadata.
-        # In rag.py we'll filter on document_id and workspace_id to make
-        # sure users only retrieve chunks from documents they own.
-        #
-        # We also assign a stable custom_id (UUID) to each chunk. PGVector
-        # accepts an ids= list in add_documents() and stores it in the
-        # custom_id column — useful if you ever need to delete specific chunks.
-        # ------------------------------------------------------------------
         chunk_ids = []
         for chunk in chunks:
             chunk_id = str(uuid4())
@@ -164,30 +153,7 @@ def ingest_document(document_id: UUID, db: Session) -> None:
         raise
 
 
-# def delete_document_vectors(document_id: UUID) -> None:
-#     """
-#     Removes all vectors for a document from LangChain's embedding table.
 
-#     Call this when a user deletes a document. Since LangChain owns the
-#     vector table, there's no cascade delete from your documents table —
-#     you have to clean up explicitly.
-
-#     PGVector.delete() accepts a list of custom_ids (the UUIDs we stored
-#     in chunk.metadata["chunk_id"] and passed as ids= to add_documents).
-#     However, since we'd need to look those up, it's simpler to use the
-#     filter-based deletion that queries cmetadata directly.
-#     """
-#     # PGVector exposes delete() by ids. To delete by metadata filter,
-#     # we query the store first to get the ids, then delete.
-#     # This is a known ergonomic gap in langchain-postgres — you can also
-#     # write a raw SQL DELETE against langchain_pg_embedding if you prefer.
-#     results = vector_store.get(
-#         where={"document_id": str(document_id)},  # queries cmetadata JSONB
-#     )
-
-    
-#     if results and results.get("ids"):
-#         vector_store.delete(ids=results["ids"])
 def delete_document_vectors(document_id: UUID) -> None:
     """
     Deletes all vectors for a document directly from langchain_pg_embedding.

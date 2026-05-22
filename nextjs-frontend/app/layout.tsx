@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ClerkProvider } from '@clerk/nextjs'
 import { dark } from '@clerk/ui/themes'
 import type { Appearance } from "@clerk/ui";
+import { Toaster } from "@/components/ui/sonner"
 
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'})
@@ -44,10 +45,11 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
-      <body>
+      <body className="h-full">
         <ClerkProvider appearance={clerkAppearanceObject}>
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="top-right" richColors/>
         </ThemeProvider>
         </ClerkProvider>
       </body>
