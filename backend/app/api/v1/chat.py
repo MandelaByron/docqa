@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from app.models.user import Chat, Document, Message, MessageRole, MessageStatus
+from app.models import User, Chat, Document, Message
 
 from app.schemas.chat import ChatCreate, ChatRead, MessageRead, MessageBatchSave
+from app.schemas.responses import MessageResponse
 from app.api.deps import get_current_user, get_async_db
 from app.models.user import User
 
@@ -84,21 +85,42 @@ async def get_chat(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    """
-    Fetch a single chat by ID. Used by the chat page on load to confirm
-    the session exists before rendering the conversation UI.
-    """
-    result = await db.execute(
-        select(Chat).where(Chat.id == chat_id)
-    )
-    chat = result.scalar_one_or_none()
+    chat = await db.get(Chat, chat_id)
     if not chat:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat not found.",
-        )
-    return chat
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found.")
+    if chat.created_by != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden.")
 
+    # Explicit query instead of lazy relationship access
+    doc = await db.get(Document, chat.document_id)
+
+    return ChatRead(
+        id=chat.id,
+        document_id=chat.document_id,
+        title=chat.title,
+        created_at=chat.created_at,
+        file_url=doc.file_url if doc else None,
+    )
+
+@router.delete("/{chat_id}", status_code=204)
+async def delete_chat(
+        chat_id: UUID,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_async_db)
+):
+    
+    """
+    Delete an item.
+    """
+    chat = await db.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if chat.created_by != current_user.id:
+        raise HTTPException(status_code=400, detail="Not enough permissions")
+    
+    await db.delete(chat)
+    await db.commit()
+    
 
 # ─── Message endpoints ────────────────────────────────────────────────────────
 @router.get("/{chat_id}/messages", response_model=list[MessageRead])
@@ -121,36 +143,36 @@ async def get_messages(
     )
     return result.scalars().all()
 
-@router.post("/{chat_id}/messages", status_code=204)
-async def save_message(
-    chat_id: UUID,
-    payload: MessageBatchSave,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
-):
-    """
-    Persist a single message. Called by the frontend:
-      - immediately when the user submits (role=user)
-      - after streaming completes with the full assistant response (role=assistant)
-    """
-    await _get_owned_chat(chat_id, current_user.id, db)
+# @router.post("/{chat_id}/messages", status_code=204)
+# async def save_message(
+#     chat_id: UUID,
+#     payload: MessageBatchSave,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_async_db),
+# ):
+#     """
+#     Persist a single message. Called by the frontend:
+#       - immediately when the user submits (role=user)
+#       - after streaming completes with the full assistant response (role=assistant)
+#     """
+#     await _get_owned_chat(chat_id, current_user.id, db)
 
-    # Delete existing messages for this chat
-    await db.execute(
-        delete(Message).where(Message.chat_id == chat_id)
-    )
+#     # Delete existing messages for this chat
+#     await db.execute(
+#         delete(Message).where(Message.chat_id == chat_id)
+#     )
  
-    # Insert the full history from the SDK
-    for ui_msg in payload.messages:
-        message = Message(
-            chat_id=chat_id,
-            user_id=current_user.id if ui_msg.get("role") == "user" else None,
-            role=MessageRole(ui_msg.get("role", "user")),
-            ui_message=ui_msg,
-            status=MessageStatus.COMPLETED,
-        )
-        db.add(message)
-    await db.commit()
+#     # Insert the full history from the SDK
+#     for ui_msg in payload.messages:
+#         message = Message(
+#             chat_id=chat_id,
+#             user_id=current_user.id if ui_msg.get("role") == "user" else None,
+#             role=MessageRole(ui_msg.get("role", "user")),
+#             ui_message=ui_msg,
+#             status=MessageStatus.COMPLETED,
+#         )
+#         db.add(message)
+#     await db.commit()
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 

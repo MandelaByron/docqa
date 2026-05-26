@@ -76,11 +76,7 @@ async def add_messages(
     persisted_messages: list[Message] = []
 
     for message in parsed_messages:
-        print(" parsed messages in crud--- ",message, "\n")
 
-        #as_python_objects = to_jsonable_python(message)  
-        #print(as_python_objects)
-        #print(message, "\n")
         pydantic_ai_message_json = ModelMessagesTypeAdapter.dump_json(
             [message]
         )

@@ -1,17 +1,12 @@
 'use client';
 
-import { useChat } from "@ai-sdk/react";
 import { useAuth } from "@clerk/nextjs";
-import { useState } from "react";
 import { type UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
-import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk";
-//import {useChatR}
-import { useDataStreamRuntime } from "@assistant-ui/react-data-stream";
-import { AssistantRuntimeProvider, ThreadMessageLike } from "@assistant-ui/react";
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
 
-import { saveChat } from "@/util/chat-store";
 
 interface ChatProps {
   chatId: string
@@ -37,9 +32,6 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
             messages,
             trigger: "submit-message",
             metadata: {},
-            config: {
-              modelName: "gpt-4o",
-            },
           },
         };
       },

@@ -164,7 +164,7 @@ class MessageStatus(StrEnum):
 class Message(SQLModel, table=True):
     __tablename__ = "messages"
     id : UUID = Field(default_factory=uuid4, primary_key=True)
-    chat_id: UUID = Field(foreign_key="chats.id", nullable=False, index=True)
+    chat_id: UUID = Field(foreign_key="chats.id", nullable=False, index=True, ondelete="CASCADE")
     user_id : UUID | None = Field(foreign_key="user.id", default=None, index=True)
 
 

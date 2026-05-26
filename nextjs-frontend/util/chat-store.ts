@@ -25,24 +25,15 @@ export async function loadMessages(chatId: string, token: string): Promise<UIMes
     const rows: MessageRow[] = await res.json();
     //const rows: { ui_message: object }[] = await res.json()
     // Each row has a ui_message field containing the full UIMessage JSON
+    console.log(rows)
     return rows.map((r) => r.ui_message)
   }
 
-export async function saveChat({
-    chatId,
-    messages,
-    token,
-  }: {
-    chatId: string;
-    messages: UIMessage[];
-    token: string;
-  }): Promise<void> {
-    await fetch(`${API_URL}/chats/${chatId}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ messages }),
-    });
+export async function loadChat(chatId: string, token: string) {
+    const res = await fetch(`${API_URL}/chats/${chatId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    return res.json() as Promise<{ id: string; title: string; file_url: string | null }>
   }

@@ -19,6 +19,9 @@ class ChatRead(BaseModel):
     title: str
     created_at: datetime
 
+    # Included so the frontend can render the PDF without a separate request
+    file_url: Optional[str] = None
+
 class MessageCreate(BaseModel):
     """Single message — used internally if needed."""
     role: MessageRole

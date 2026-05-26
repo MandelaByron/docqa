@@ -6,7 +6,7 @@ from app.api.deps import get_async_db, get_current_user
 from app.dependancies import vector_store
 from app import crud
 from app.adapters.vercel import AppVercelAIAdapter
-from app.models import User
+from app.models import User, Chat
 
 from fastapi import FastAPI,APIRouter, Depends
 from fastapi.responses import Response, StreamingResponse
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 model = AnthropicModel('claude-sonnet-4-5')
 
-document_id = UUID("99f397ff-b4f6-4a8e-9347-12da14057716")
+#document_id = UUID("99f397ff-b4f6-4a8e-9347-12da14057716")
 @dataclass
 class AppDeps:
     db: get_async_db
@@ -100,14 +100,24 @@ async def retrieve(context: RunContext[AppDeps], search_query: str) -> str:
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
+    for doc in retrieved_docs:
+        print(doc.metadata)
+
     return docs_content
 
 @router.post("/ask/{chat_id}")
 async def chat(request: Request, chat_id: UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_async_db)) -> Response:
+    # Fetch chat to get document_id — simple PK lookup, fast enough without caching
+    chat = await db.get(Chat, chat_id)
+    if not chat:
+        return Response(content='{"detail":"Chat not found"}', media_type="application/json", status_code=404)
+    if chat.created_by != current_user.id:
+        return Response(content='{"detail":"Forbidden"}', media_type="application/json", status_code=403)
+
     deps = AppDeps(
         db=None,
         vector_store=vector_store,
-        document_id=document_id,
+        document_id=chat.document_id,
     )
     accept = request.headers.get('accept', SSE_CONTENT_TYPE)
     try:

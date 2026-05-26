@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import {
   Sidebar,
@@ -16,7 +16,14 @@ import {
   SidebarGroupLabel,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { MessageSquarePlus,MessagesSquare, Search, LayoutGrid } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MessageSquarePlus,MessagesSquare, Search, LayoutGrid,  MoreHorizontal, Trash2 } from "lucide-react"
+import DeleteChatDialog from "./delete-dialog"
 import { SignInButton } from "@clerk/nextjs"
 import { useUser } from "@clerk/nextjs"
 import { UserButton } from "@clerk/nextjs";
@@ -119,9 +126,30 @@ function UserFooter() {
 function ChatList() {
   const api = useApiClient()
   const pathname = usePathname()
+  const router = useRouter()
   const [chats, setChats] = useState<ChatRead[]>([])
   const [isLoading, setIsLoading] = useState(true)
- 
+  const [pendingDelete, setPendingDelete] = useState<ChatRead | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDelete) return
+    setIsDeleting(true)
+    try {
+      await api.delete(`/chats/${pendingDelete.id}`)
+      setChats((prev) => prev.filter((c) => c.id !== pendingDelete.id))
+      // If the user is currently in the deleted chat, navigate home
+      if (pathname === `/chat/${pendingDelete.id}`) {
+        router.push("/")
+      }
+    } catch {
+      // handle error silently — could add a toast here
+    } finally {
+      setIsDeleting(false)
+      setPendingDelete(null)
+    }
+  }
+
   useEffect(() => {
     api.get<ChatRead[]>("/chats/fetch_chats")
       .then(setChats)
@@ -149,33 +177,77 @@ function ChatList() {
   }
  
   return (
-    <SidebarMenu className="gap-0">
-      {chats.map((chat) => {
-        const isActive = pathname === `/chat/${chat.id}`
-        return (
-          <SidebarMenuItem key={chat.id}>
-            <SidebarMenuButton
-              asChild
-              tooltip={chat.title}
-              className={cn(
-                "relative h-8 rounded-lg px-2.5 text-[13px] transition-all duration-150",
-                isActive
-                  ? "text-white/90 bg-white/4"
-                  : "text-white/45 hover:text-white/80 hover:bg-white/5",
-              )}
-            >
-              <Link href={`/chat/${chat.id}`} className="flex items-center gap-2.5 min-w-0">
-                <MessagesSquare
-                  className="h-[15px] w-[15px] shrink-0 text-white/30"
-                  strokeWidth={1.7}
-                />
-                <span className="truncate">{chat.title}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        )
-      })}
-    </SidebarMenu>
+    <>
+      <SidebarMenu className="gap-0">
+        {chats.map((chat) => {
+          const isActive = pathname === `/chat/${chat.id}`
+          return (
+            <SidebarMenuItem key={chat.id}>
+              {/* Wrapper allows hover to reveal the dropdown trigger */}
+              <div className="group/item relative flex items-center">
+                <SidebarMenuButton
+                  asChild
+                  tooltip={chat.title}
+                  className={cn(
+                    "relative h-8 rounded-lg px-2.5 text-[13px] transition-all duration-150 pr-8",
+                    isActive
+                      ? "text-white/90 bg-white/[0.08]"
+                      : "text-white/45 hover:text-white/80 hover:bg-white/[0.05]",
+                  )}
+                >
+                  <Link href={`/chat/${chat.id}`} className="flex items-center gap-2.5 min-w-0">
+                    <MessagesSquare
+                      className="h-[15px] w-[15px] shrink-0 text-white/30"
+                      strokeWidth={1.7}
+                    />
+                    <span className="truncate">{chat.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+ 
+                {/* Dropdown trigger — appears on row hover */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={cn(
+                      "absolute right-1.5 flex items-center justify-center",
+                      "h-5 w-5 rounded-md",
+                      "text-white/0 group-hover/item:text-white/35",
+                      "hover:text-white/70! hover:bg-white/[0.07]",
+                      "transition-all duration-100 outline-none",
+                      "group-data-[collapsible=icon]:hidden",
+                    )}
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="right"
+                    align="start"
+                    sideOffset={6}
+                    className="w-36 bg-[#141416] border border-white/8 rounded-xl p-1 shadow-xl shadow-black/40"
+                  >
+                    <DropdownMenuItem
+                      onClick={() => setPendingDelete(chat)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12.5px] text-red-400/80 hover:text-red-300 hover:bg-red-500/8 cursor-pointer transition-colors outline-none"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.7} />
+                      Delete chat
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </SidebarMenuItem>
+          )
+        })}
+      </SidebarMenu>
+ 
+      {/* Confirmation dialog — rendered once, driven by pendingDelete state */}
+      <DeleteChatDialog
+        open={!!pendingDelete}
+        chatTitle={pendingDelete?.title ?? ""}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </>
   )
 }
 // ─── Sidebar ──────────────────────────────────────────────────────────────────

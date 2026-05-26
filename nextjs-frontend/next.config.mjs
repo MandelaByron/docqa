@@ -25,7 +25,7 @@ const nextConfig = {
             : "/api/openapi.json",
       },
     ];
-  },
+  }
 };
 
 export default nextConfig
