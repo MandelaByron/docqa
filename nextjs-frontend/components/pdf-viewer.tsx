@@ -1,129 +1,146 @@
 
 "use client"
 
-// import { useState } from "react"
-// import { Document, Page, pdfjs } from "react-pdf"
-// import { ChevronLeft, ChevronRight } from "lucide-react"
-// import { cn } from "@/lib/utils"
+import { useState, useRef, useEffect } from "react"
+import { 
+  PDFViewer,
+  PDFViewerRef,
+  SelectionPlugin,
+  ignore,
 
-// import "react-pdf/dist/Page/AnnotationLayer.css"
-// import "react-pdf/dist/Page/TextLayer.css"
-
-// // Point to the worker bundled with react-pdf
-// pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
-
+} from '@embedpdf/react-pdf-viewer';
+import { MessageSquare, AlignLeft, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 interface PdfViewerProps {
-  url: string
+  url: string,
+
+  // Called when the user clicks a prompt action — injects text into the chat
+  onPrompt?: (text: string) => void
 }
 
-// export function PdfViewer({ url }: PdfViewerProps) {
-//   const [numPages, setNumPages]   = useState<number>(0)
-//   const [pageNumber, setPageNumber] = useState(1)
 
-//   const onLoadSuccess = ({ numPages }: { numPages: number }) => {
-//     setNumPages(numPages)
-//     setPageNumber(1)
-//   }
 
-//   const prev = () => setPageNumber((p) => Math.max(1, p - 1))
-//   const next = () => setPageNumber((p) => Math.min(numPages, p + 1))
-
-//   return (
-//     <div className="flex flex-col h-full bg-[#0e0e10] border-r border-white/6">
-
-//       {/* PDF canvas — scrollable */}
-//       <div className="flex-1 overflow-auto flex items-start justify-center py-6 px-4">
-//         <Document
-//           file={url}
-//           onLoadSuccess={onLoadSuccess}
-//           loading={
-//             <div className="flex items-center justify-center h-64 w-full">
-//               <span className="text-[12px] text-white/25 animate-pulse">Loading PDF…</span>
-//             </div>
-//           }
-//           error={
-//             <div className="flex items-center justify-center h-64 w-full">
-//               <span className="text-[12px] text-red-400/60">Failed to load PDF.</span>
-//             </div>
-//           }
-//         >
-//           <Page
-//             pageNumber={pageNumber}
-//             // Fill the available width minus padding
-//             width={Math.min(window?.innerWidth * 0.45, 680)}
-//             renderTextLayer
-//             renderAnnotationLayer
-//             className="shadow-2xl shadow-black/60 rounded-sm"
-//           />
-//         </Document>
-//       </div>
-
-//       {/* Page controls */}
-//       {numPages > 0 && (
-//         <div className="flex items-center justify-center gap-3 py-3 border-t border-white/6">
-//           <button
-//             onClick={prev}
-//             disabled={pageNumber <= 1}
-//             className={cn(
-//               "flex items-center justify-center h-7 w-7 rounded-lg transition-colors",
-//               pageNumber <= 1
-//                 ? "text-white/15 cursor-not-allowed"
-//                 : "text-white/40 hover:text-white/80 hover:bg-white/6",
-//             )}
-//           >
-//             <ChevronLeft className="h-4 w-4" strokeWidth={1.8} />
-//           </button>
-
-//           <span className="text-[12px] text-white/35 tabular-nums">
-//             {pageNumber} / {numPages}
-//           </span>
-
-//           <button
-//             onClick={next}
-//             disabled={pageNumber >= numPages}
-//             className={cn(
-//               "flex items-center justify-center h-7 w-7 rounded-lg transition-colors",
-//               pageNumber >= numPages
-//                 ? "text-white/15 cursor-not-allowed"
-//                 : "text-white/40 hover:text-white/80 hover:bg-white/6",
-//             )}
-//           >
-//             <ChevronRight className="h-4 w-4" strokeWidth={1.8} />
-//           </button>
-//         </div>
-//       )}
-//     </div>
-//   )
-// }
-
-import { PDFViewer } from '@embedpdf/react-pdf-viewer';
  
-export function PdfViewer({ url }: PdfViewerProps) {
+export function PdfViewer({ url, onPrompt }: PdfViewerProps) {
+    const viewerRef = useRef<PDFViewerRef>(null) 
+    const [selectedText, setSelectedText] = useState("")
+    const [hasSelection, setHasSelection] = useState(false)
+
+  // Subscribe to selection changes once the viewer registry is ready
+    useEffect(() => {
+      const cleanups: (() => void)[] = []
+  
+      viewerRef.current?.registry?.then((registry) => {
+        const selectionPlugin = registry
+          .getPlugin<SelectionPlugin>("selection")
+          ?.provides()
+  
+        // "doc" must match the documentId in initialDocuments below
+        const scope = selectionPlugin?.forDocument("doc")
+        if (!scope) return
+  
+        cleanups.push(
+          scope.onSelectionChange((currentSelection) => {
+            setHasSelection(!!currentSelection)
+  
+            if (currentSelection) {
+              scope.getSelectedText().wait((lines) => {
+                setSelectedText(lines.join(" "))
+              }, ignore)
+            } else {
+              setSelectedText("")
+            }
+          }),
+        )
+      })
+  
+      return () => cleanups.forEach((fn) => fn())
+    }, [])
+
+
+
+    const handlePrompt = (prefix: string) => {
+      if (!selectedText || !onPrompt) return
+      onPrompt(`${prefix}:\n\n"${selectedText}"`)
+      // Clear selection after sending
+      viewerRef.current?.registry?.then((registry) => {
+        registry.getPlugin<SelectionPlugin>("selection")?.provides()
+          .forDocument("doc")?.clear()
+      })
+    }
     return (
-      <div className="flex flex-col h-full border-r border-white/6">
+      <div className="relative flex flex-col h-full border-r border-white/6">
+   
+        {/* Selection action bar — floats above the toolbar when text is selected */}
+        <div
+          className={cn(
+            "absolute top-6 left-1/2 -translate-x-1/2 z-50",
+            "flex items-center gap-1.5 px-2 py-2",
+            "bg-[#1a1a1e] border border-white/10 rounded-xl shadow-xl shadow-black/50",
+            "transition-all duration-150",
+            hasSelection
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 -translate-y-1 pointer-events-none",
+          )}
+        >   
+          <div className="w-px h-8 bg-white/8 mx-0.5" />
+   
+          <button
+            onClick={() => handlePrompt("Explain this")}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium text-white/65 hover:text-white/90 hover:bg-white/[0.07] transition-colors"
+          >
+            <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.7} />
+            Explain
+          </button>
+   
+          <button
+            onClick={() => handlePrompt("Summarise this")}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium text-white/65 hover:text-white/90 hover:bg-white/[0.07] transition-colors"
+          >
+            <AlignLeft className="h-3.5 w-3.5" strokeWidth={1.7} />
+            Summarise
+          </button>
+   
+          <button
+            onClick={() => {
+              viewerRef.current?.registry?.then((registry) => {
+                registry.getPlugin<SelectionPlugin>("selection")?.provides()
+                  .forDocument("doc")?.clear()
+              })
+            }}
+            className="flex items-center justify-center h-6 w-6 rounded-lg text-white/25 hover:text-white/60 hover:bg-white/6 transition-colors ml-0.5"
+            aria-label="Clear selection"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+   
+        {/* PDF viewer */}
         <PDFViewer
+          ref={viewerRef}
           config={{
-            src: url,
+            documentManager: {
+              initialDocuments: [{ url, documentId: "doc" }],
+            },
             theme: {
               preference: "dark",
               dark: {
                 accent: {
-                  primary: "#ffffff",
-                  primaryHover: "rgba(255,255,255,0.85)",
-                  primaryActive: "rgba(255,255,255,0.7)",
-                  primaryLight: "rgba(255,255,255,0.06)",
+                  primary:           "#ffffff",
+                  primaryHover:      "rgba(255,255,255,0.85)",
+                  primaryActive:     "rgba(255,255,255,0.7)",
+                  primaryLight:      "rgba(255,255,255,0.06)",
                   primaryForeground: "#0e0e10",
                 },
                 background: {
-                  app:     "#0e0e10",   // matches your sidebar + page bg
-                  surface: "#141416",   // matches your card/input bg
+                  app:     "#0e0e10",
+                  surface: "#141416",
                 },
               },
             },
-            // Disable features you don't need yet
-            disabledCategories: ["annotation", "redaction", "export"],
+            disabledCategories: ["annotation", "redaction", "export", "document-open", "document-close"],
           }}
-          style={{ height: "100%", width: "100%" }}
+          style={{ width: "100%", height: "100%" }}
         />
       </div>
     )
