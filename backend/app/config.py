@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     upload_dir : str = "uploads"
     anthropic_api_key: str
     voyage_api_key: str
+    pinecone_api_key: str
 
 
     CLERK_WEBHOOK_SIGNING_SECRET: str

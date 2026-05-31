@@ -20,18 +20,17 @@ from pydantic import ValidationError
 from pydantic_ai.ui import SSE_CONTENT_TYPE
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter, VercelAIEventStream
-from langchain_postgres import PGVector
+from langchain_pinecone import PineconeVectorStore
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 model = AnthropicModel('claude-sonnet-4-5')
 
-#document_id = UUID("99f397ff-b4f6-4a8e-9347-12da14057716")
 @dataclass
 class AppDeps:
     db: get_async_db
-    vector_store: PGVector
+    vector_store: PineconeVectorStore
     document_id: UUID
 
 
@@ -39,6 +38,7 @@ agent = Agent(
     model,
     system_prompt=(
         "You are a document question-answering assistant. "
+        "You should keep your answers short and concise. "
         "The user has uploaded a document. You have access to a retrieve tool that searches it. "
         "\n\n"
         "CONTEXT:\n"
@@ -129,8 +129,7 @@ async def chat(request: Request, chat_id: UUID, current_user: User = Depends(get
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
     # Save the incoming user message immediately, before streaming.
-    # The frontend always sends the full history; the last user message is the new one.
-    # We identify it by finding the last message with role='user' in run_input.messages.
+
     last_user_ui_message = next(
         (m for m in reversed(run_input.messages) if m.role == 'user'),
         None,

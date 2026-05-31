@@ -45,27 +45,11 @@ from app.api.deps import get_sync_db
 from app.models import Document
 from app.database import engine
 from app.dependancies import embeddings
-from langchain_postgres import PGVector
 from sqlalchemy import text
 from sqlmodel import Session
 
-# ---------------------------------------------------------------------------
-# Shared LangChain components
-# These are module-level singletons — no need to reinstantiate per request.
-# ---------------------------------------------------------------------------
+from app.dependancies import vector_store
 
-vector_store = PGVector(
-    embeddings=embeddings,
-    collection_name="documents",
-    connection=settings.database_url,  # ← plain sync URL string, correct for sync
-    use_jsonb=True,
-    create_extension=False
-)
-
-
-
-# Splitter config. These values are a reasonable starting point for PDFs.
-# chunk_size is in characters. chunk_overlap keeps context across boundaries.
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
@@ -129,17 +113,13 @@ def ingest_document(document_id: UUID, db: Session) -> None:
 
         # ------------------------------------------------------------------
         # Step 4: Embed + Store
-        # add_documents() does three things internally:
-        #   a) Calls embeddings.embed_documents([c.page_content for c in chunks])
-        #      — one batched VoyageAI API call for all chunks.
-        #   b) Inserts rows into langchain_pg_embedding with the vectors.
-        #   c) Returns the list of IDs that were stored.
+
         # ------------------------------------------------------------------
         vector_store.add_documents(chunks, ids=chunk_ids)
 
         # ------------------------------------------------------------------
         # Step 5: Update the Document record
-        # We still own the documents table — update status and chunk count.
+
         # ------------------------------------------------------------------
         doc.status = "ready"
         doc.chunk_count = len(chunks)

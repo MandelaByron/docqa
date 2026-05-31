@@ -12,6 +12,7 @@ dependencies = [
     "fastapi[standard]>=0.136.0",
     "httpx>=0.28.1",
     "langchain-community>=0.4.1",
+    "langchain-pinecone>=0.2.13",
     "langchain-postgres>=0.0.17",
     "langchain-text-splitters>=1.1.2",
     "langchain-voyageai>=0.3.3",
