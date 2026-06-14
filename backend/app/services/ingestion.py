@@ -42,7 +42,7 @@ from sqlmodel import Session
 
 from app.config import settings
 from app.api.deps import get_sync_db
-from app.models import Document
+from app.models import Document, User
 from app.database import engine
 from app.dependancies import embeddings
 from sqlalchemy import text
@@ -83,7 +83,7 @@ def ingest_document(document_id: UUID, db: Session) -> None:
         doc.status = "processing"
         db.commit()
 
-
+    
 
         loader = PyPDFLoader(doc.file_url)
         pages = loader.load()

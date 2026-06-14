@@ -3,7 +3,11 @@ from uuid import UUID
 from typing import Optional
 from datetime import datetime
 
+class DocumentBase(BaseModel):
+    id: UUID
 
+class ChatWorkspaceUpdate(BaseModel):
+    chat_id: UUID
 class DocumentCreate(BaseModel):
     """
     Payload the frontend sends after Uploadthing completes the client-side upload.
@@ -18,16 +22,16 @@ class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     file_url: str 
     filename: str
     mime_type: str
     size_bytes: int
     status: str
     chunk_count: int
-    error_message: Optional[str]
+    error_message: str | None = None
     created_at: datetime
-    processed_at: Optional[datetime]
+    processed_at: datetime | None = None
 
 
 class ChunkRead(BaseModel):

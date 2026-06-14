@@ -10,8 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import httpx
 
 from app.api.deps import get_current_user, get_async_db, get_sync_db
-from app.models import User, Document
-from app.schemas.documents import DocumentRead, DocumentCreate
+from app.models import User, Document, Workspace
+from app.schemas.documents import DocumentRead, DocumentCreate, DocumentBase
 from app.services import storage, ingestion, rag
 
 
@@ -26,18 +26,11 @@ ALLOWED_MIME_TYPES = {
 
 @router.post("/process", response_model=DocumentRead, status_code=201)
 async def process_document(
-    workspace_id: UUID,
     payload: DocumentCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    """
-    Saves the file to disk and returns immediately with status='pending'.
-    Ingestion (chunking + embedding) runs in the background.
-    Poll GET /documents/{id} to check when status becomes 'ready'.
-    """
-
     file_url = str(payload.url)
     size_bytes = 0
 
@@ -53,7 +46,6 @@ async def process_document(
 
     # Create the DB record first so we have a stable ID for the storage path.
     doc = Document(
-        workspace_id=workspace_id,
         uploaded_by=current_user.id,
         filename=payload.filename,
         file_url=file_url,        
@@ -78,6 +70,7 @@ async def process_document(
     background_tasks.add_task(run_ingestion)
 
     return doc
+
 
 
 # ── List & retrieve ───────────────────────────────────────────────────────────

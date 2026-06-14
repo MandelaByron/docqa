@@ -3,7 +3,6 @@ from app.schemas.workspace import (
     WorkspaceBase,
     WorkspaceCreate,
     WorkspaceRead,
-    WorkspaceReadWithRole,
 )
 from app.schemas.workspace_member import (
     WorkspaceMemberInvite,
@@ -19,7 +18,6 @@ __all__ = [
     "WorkspaceBase",
     "WorkspaceCreate",
     "WorkspaceRead",
-    "WorkspaceReadWithRole",
     "WorkspaceMemberInvite",
     "WorkspaceMemberRead",
     "WorkspaceMemberUpdateRole",

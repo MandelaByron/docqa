@@ -8,8 +8,9 @@ from app.models import User, Chat, Document, Message
 
 from app.schemas.chat import ChatCreate, ChatRead, MessageRead, MessageBatchSave
 from app.schemas.responses import MessageResponse
-from app.api.deps import get_current_user, get_async_db
+from app.api.deps import get_current_user, get_async_db, get_db
 from app.models.user import User
+from sqlmodel import Session
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 
@@ -64,15 +65,15 @@ async def create_or_get_chat(
     return chat
 
 @router.get("/fetch_chats", response_model=list[ChatRead])
-async def get_chats(
+def get_chats(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
 ):
     """
     Returns all chats belonging to the current user, ordered newest first.
     Scoped via created_by — users only see their own chats.
     """
-    result = await db.execute(
+    result = db.exec(
         select(Chat)
         .where(Chat.created_by == current_user.id)
         .order_by(Chat.created_at.desc())
@@ -80,27 +81,18 @@ async def get_chats(
     return result.scalars().all()
 
 @router.get("/{chat_id}", response_model=ChatRead)
-async def get_chat(
+def get_chat(
     chat_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
 ):
-    chat = await db.get(Chat, chat_id)
+    chat = db.get(Chat, chat_id)
     if not chat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found.")
     if chat.created_by != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden.")
 
-    # Explicit query instead of lazy relationship access
-    doc = await db.get(Document, chat.document_id)
-
-    return ChatRead(
-        id=chat.id,
-        document_id=chat.document_id,
-        title=chat.title,
-        created_at=chat.created_at,
-        file_url=doc.file_url if doc else None,
-    )
+    return chat
 
 @router.delete("/{chat_id}", status_code=204)
 async def delete_chat(

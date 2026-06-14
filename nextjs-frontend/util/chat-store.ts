@@ -1,5 +1,5 @@
 import { UIMessage } from 'ai';
-import { ThreadMessageLike } from '@assistant-ui/react';
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Shape of what FastAPI returns from GET /chats/{chatId}/messages

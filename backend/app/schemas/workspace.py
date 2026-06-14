@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-
+from .documents import DocumentRead
+from .chat import ChatRead
 from pydantic import BaseModel, ConfigDict
 
 
@@ -12,9 +13,8 @@ class WorkspaceBase(BaseModel):
 
 class WorkspaceCreate(BaseModel):
     """Payload to create a workspace, with optional slug override."""
-
     name: str
-    slug: Optional[str] = None
+    is_personal: bool = False
 
 
 class WorkspaceRead(WorkspaceBase):
@@ -29,11 +29,10 @@ class WorkspaceRead(WorkspaceBase):
     storage_quota_bytes: int
     is_personal: bool
     created_at: datetime
+    chats: list[ChatRead]
+    #docs: list[DocumentRead]
 
 
-class WorkspaceReadWithRole(WorkspaceRead):
-    """Workspace response that includes the current user's role."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    role: str
+class WorkspaceUpdate(BaseModel):
+    name: Optional[str] = None

@@ -3,6 +3,7 @@ from typing import Optional, Any
 from datetime import datetime
 from uuid import UUID
 from app.models.user import MessageRole, MessageStatus
+from .documents import DocumentRead
 
 class ChatCreate(BaseModel):
     """Sent by the frontend when the user clicks 'Start chatting'."""
@@ -18,9 +19,7 @@ class ChatRead(BaseModel):
     document_id: UUID
     title: str
     created_at: datetime
-
-    # Included so the frontend can render the PDF without a separate request
-    file_url: Optional[str] = None
+    document: DocumentRead
 
 class MessageCreate(BaseModel):
     """Single message — used internally if needed."""

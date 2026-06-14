@@ -43,8 +43,7 @@ interface UploadedDoc {
   mimeType: string
 }
 
-// Hardcoded for now — replace with workspace selector / context later
-const DEFAULT_WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID ?? ""
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -71,8 +70,7 @@ export function FileUploader() {
           url:       file.url,
           filename:  file.name,
           mime_type: file.mimeType,
-        },
-        { workspace_id: DEFAULT_WORKSPACE_ID },
+        }
       )
 
       setDocRecord(record)
@@ -93,12 +91,6 @@ export function FileUploader() {
     }
   }
 
-  // const handleStartChat = () => {
-  //   if (!docRecord) return
-  //   // Navigate to the chat route, passing the document ID as a query param.
-  //   // The chat page can then scope its questions to this document.
-  //   router.push(`/chat?document_id=${docRecord.id}`)
-  // }
   const handleStartChat = async () => {
     if (!docRecord) return
     setIsWorking(true)
@@ -107,9 +99,6 @@ export function FileUploader() {
       const chat = await api.post<ChatRead>("/chats", {
         document_id: docRecord.id,
       })
-      // ?summary=1 tells the chat page to fire the summary query on mount.
-      // On subsequent visits to the same chat URL the param won't be present,
-      // so the summary is only triggered once — right after upload.
       router.push(`/chat/${chat.id}`)
     } catch (err) {
       const message = err instanceof ApiError ? err.detail : "Could not start chat."
@@ -180,21 +169,6 @@ export function FileUploader() {
         >
           <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} />
           {isWorking ? "Processing…" : "Start chatting"}
-        </Button>
-
-        <Button
-          variant="outline"
-          disabled={!isReady || isWorking}
-          onClick={handleSaveToWorkspace}
-          className={cn(
-            "flex-1 h-9 text-[13px] font-medium gap-2 transition-all duration-150",
-            isReady && !isWorking
-              ? "border-white/[0.1] text-white/60 hover:text-white/90 hover:bg-white/[0.05] hover:border-white/20 bg-transparent"
-              : "border-white/[0.04] text-white/20 cursor-not-allowed bg-transparent hover:bg-transparent",
-          )}
-        >
-          <FolderPlus className="h-3.5 w-3.5" strokeWidth={1.8} />
-          Save to workspace
         </Button>
       </div>
     </div>
