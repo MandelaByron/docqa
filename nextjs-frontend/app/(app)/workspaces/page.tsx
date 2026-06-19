@@ -14,7 +14,6 @@ export default async function WorkspacesPage() {
   if (!token) redirect("/")
 
   const workspaces = await loadWorkspaces(token)
-  console.log(workspaces)
   return (
     <main className="flex flex-col flex-1 px-6 py-8 max-w-4xl mx-auto w-full">
 

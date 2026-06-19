@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import type { ChatRead } from "./types"
+import type { ChatRead } from "../../lib/types"
 
 interface WorkspaceContextBarProps {
   documentChats: ChatRead[]
@@ -41,13 +41,13 @@ export function WorkspaceContextBar({
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="w-56 bg-[#141416] border border-white/[0.08] rounded-xl p-1.5 shadow-xl shadow-black/40"
+          className="w-56 bg-[#141416] border border-white/8 rounded-xl p-1.5 shadow-xl shadow-black/40"
         >
           <DropdownMenuLabel className="px-2 py-1 text-[10.5px] font-medium tracking-widest uppercase text-white/20">
             Files
           </DropdownMenuLabel>
 
-          <DropdownMenuSeparator className="bg-white/[0.05] my-1" />
+          <DropdownMenuSeparator className="bg-white/5 my-1" />
 
           {documentChats.length === 0 ? (
             <p className="px-2 py-2 text-[12px] text-white/25 text-center">

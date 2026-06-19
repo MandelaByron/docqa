@@ -1,8 +1,5 @@
 "use client"
 
-import Link from "next/link"
-import { Columns2, MessageSquare, FileText, Sparkles } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export type ViewMode = "split" | "pdf-only" | "chat-only"
@@ -14,17 +11,10 @@ interface WorkspaceTopNavProps {
   onViewModeChange: (mode: ViewMode) => void
 }
 
-const VIEW_BUTTONS: { mode: ViewMode; icon: React.ElementType; label: string }[] = [
-  { mode: "pdf-only",   icon: FileText,  label: "PDF only"  },
-  { mode: "split",      icon: Columns2,  label: "Side by side" },
-  { mode: "chat-only",  icon: MessageSquare, label: "Chat only" },
-]
 
 export function WorkspaceTopNav({
   title,
   fileCount,
-  viewMode,
-  onViewModeChange,
 }: WorkspaceTopNavProps) {
   return (
     <header className="flex items-center justify-between px-4 h-12 shrink-0 border-b border-white/[0.06] bg-[#0e0e10]">

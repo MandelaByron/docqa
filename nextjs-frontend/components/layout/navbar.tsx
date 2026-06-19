@@ -6,7 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { UserButton, SignInButton, useUser } from "@clerk/nextjs"
 import { Columns2, MessageSquare, FileText, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useViewMode } from "../view-mode-context"
+import { useViewMode } from "../providers/view-mode-provider"
 
 export type ViewMode = "split" | "pdf-only" | "chat-only"
 

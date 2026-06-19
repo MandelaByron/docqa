@@ -17,7 +17,8 @@ export default async function WorkspaceDetailPage(
 
   return (
     <WorkspacePage
-      workspace={workspace}
+      workspaceId={workspaceId}
+      initialWorkspace={workspace}
     />
   )
 }

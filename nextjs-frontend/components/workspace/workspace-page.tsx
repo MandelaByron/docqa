@@ -6,16 +6,19 @@ import { WorkspaceContextBar } from "./workspace-context-bar"
 import { WorkspaceEmptyState } from "./workspace-empty-state"
 import { PdfViewer } from "@/components/pdf-viewer"
 import { Chat } from "@/components/chat-page"
-import { useViewMode } from "../view-mode-context"
-import type { WorkspaceRead } from "./types"
+import { useViewMode } from "../providers/view-mode-provider"
+import { useWorkspace } from "@/hooks/use-workspaces"
+import type { WorkspaceRead } from "../../lib/types"
 
 interface WorkspacePageProps {
-  workspace: WorkspaceRead
+  workspaceId: string
+  initialWorkspace: WorkspaceRead
 }
 
-export function WorkspacePage({ workspace }: WorkspacePageProps) {
+export function WorkspacePage({ workspaceId, initialWorkspace }: WorkspacePageProps) {
   const { viewMode, setViewMode } = useViewMode()
   const [injectedPrompt, setInjectedPrompt] = useState("")
+  const { data: workspace = initialWorkspace } = useWorkspace(workspaceId, initialWorkspace)
 
   const isEmpty = workspace.chats.length === 0
 
@@ -47,7 +50,7 @@ export function WorkspacePage({ workspace }: WorkspacePageProps) {
           {showPdf && firstDoc?.file_url && (
             <div
               className={[
-                "flex flex-col min-h-0 border-r border-white/[0.06]",
+                "flex flex-col min-h-0 border-r border-white/6",
                 viewMode === "pdf-only" ? "flex-1" : "w-1/2",
               ].join(" ")}
             >

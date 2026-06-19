@@ -1,4 +1,4 @@
-import type { WorkspaceRead, DocumentRead, ChatRead } from "./types"
+import type { WorkspaceRead, DocumentRead, ChatRead } from "../../lib/types"
 
 export const PLACEHOLDER_WORKSPACE: WorkspaceRead = {
   id: "ws-001",
