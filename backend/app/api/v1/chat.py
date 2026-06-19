@@ -16,10 +16,10 @@ router = APIRouter(prefix="/chats", tags=["chats"])
 
 
 @router.post("/", response_model=ChatRead, status_code=201)
-async def create_or_get_chat(
+def create_or_get_chat(
     payload: ChatCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
 ):
     """
     Idempotent — if a chat already exists for this document, return it.
@@ -30,7 +30,7 @@ async def create_or_get_chat(
     current user (via the uploaded_by check).
     """
     # Verify the document exists and belongs to this user
-    doc_result = await db.execute(
+    doc_result = db.exec(
         select(Document).where(
             Document.id == payload.document_id,
             Document.uploaded_by == current_user.id,
@@ -44,7 +44,7 @@ async def create_or_get_chat(
         )
 
     # Return existing chat if one already exists for this document
-    existing = await db.execute(
+    existing = db.exec(
         select(Chat).where(Chat.document_id == payload.document_id)
     )
     chat = existing.scalar_one_or_none()
@@ -54,16 +54,17 @@ async def create_or_get_chat(
     # Derive a title from the document filename if none was provided
     title = payload.title or _title_from_filename(doc.filename)
 
-    chat = Chat(
-        document_id=payload.document_id,
-        created_by=current_user.id,
-        title=title,
-    )
-    db.add(chat)
-    await db.commit()
-    await db.refresh(chat)
-    return chat
-
+    new_chat = db.get(Chat, payload.document_id)
+    if new_chat is None:
+        new_chat = Chat(
+            document_id=payload.document_id,
+            created_by=current_user.id,
+            title=title,
+        )
+        db.add(new_chat)
+        db.commit()
+        db.refresh(new_chat)
+    return new_chat
 @router.get("/fetch_chats", response_model=list[ChatRead])
 def get_chats(
     current_user: User = Depends(get_current_user),
