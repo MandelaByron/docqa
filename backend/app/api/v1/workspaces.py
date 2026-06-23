@@ -39,10 +39,10 @@ def _title_from_workspace(name: str) -> str:
 # ─── Workspace CRUD ───────────────────────────────────────────────────────────
 
 @router.post("", response_model=WorkspaceRead, status_code=201)
-async def create_workspace(
+def create_workspace(
     payload: WorkspaceCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
 ):
     workspace = Workspace(
         owner_id=current_user.id,
@@ -50,8 +50,8 @@ async def create_workspace(
         is_personal=payload.is_personal,
     )
     db.add(workspace)
-    await db.commit()
-    await db.refresh(workspace)
+    db.commit()   
+    db.refresh(workspace)
     return workspace
 
 
@@ -65,6 +65,8 @@ def list_workspaces(
         .where(Workspace.owner_id == current_user.id)
         .order_by(Workspace.created_at.desc())
     )
+    print(result)
+
     return result.scalars().all()
 
 

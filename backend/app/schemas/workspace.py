@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 from .documents import DocumentRead
 from .chat import ChatRead
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class WorkspaceBase(BaseModel):
@@ -30,6 +30,11 @@ class WorkspaceRead(WorkspaceBase):
     is_personal: bool
     created_at: datetime
     chats: list[ChatRead]
+    
+    @computed_field
+    @property
+    def chat_count(self) -> int:
+        return len(self.chats)
     #docs: list[DocumentRead]
 
 

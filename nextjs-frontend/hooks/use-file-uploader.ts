@@ -11,10 +11,6 @@ type UploadStage =
   | "done"          // ready
   | "error"
  
-interface UploadedFile {
-  file: File
-  id: string
-}
 
 export function useFileProcessor() {
     const [stage, setStage]       = useState<UploadStage>("idle")

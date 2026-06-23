@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { type UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { AssistantRuntimeProvider, useAssistantRuntime, useAui } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useAui } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
 //import { AssistantRuntimeProvider, useAssistantRuntime } from "@assistant-ui/react"
 

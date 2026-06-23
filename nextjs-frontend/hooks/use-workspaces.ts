@@ -40,23 +40,32 @@ export function useAddChatToWorkspace() {
       await queryClient.cancelQueries({
         queryKey: queryKeys.workspaces.detail(workspaceId),
       })
-
+    
       const previous = queryClient.getQueryData<WorkspaceRead>(
         queryKeys.workspaces.detail(workspaceId),
       )
-
+    
+      // Optimistically update the detail cache
       if (previous && !previous.chats.some((c) => c.id === chat.id)) {
         queryClient.setQueryData<WorkspaceRead>(
           queryKeys.workspaces.detail(workspaceId),
-          {
-            ...previous,
-            chats: [...previous.chats, chat],
-          },
+          { ...previous, chats: [...previous.chats, chat] },
         )
       }
-
-      return { previous }
+    
+      // ← ADD THIS: optimistically increment chat_count in the list cache
+      const previousList = queryClient.getQueryData<WorkspaceRead[]>(queryKeys.workspaces.all)
+      queryClient.setQueryData<WorkspaceRead[]>(queryKeys.workspaces.all, (old) =>
+        old?.map((w) =>
+          w.id === workspaceId
+            ? { ...w, chat_count: (w.chat_count ?? 0) + 1 }
+            : w
+        ) ?? []
+      )
+    
+      return { previous, previousList }  // ← ADD previousList to the return
     },
+
     onError: (_err, { workspaceId }, context) => {
       if (context?.previous) {
         queryClient.setQueryData(
@@ -64,10 +73,48 @@ export function useAddChatToWorkspace() {
           context.previous,
         )
       }
+      // ← ADD THIS: roll back the list cache on failure
+      if (context?.previousList) {
+        queryClient.setQueryData(queryKeys.workspaces.all, context.previousList)
+      }
     },
     onSettled: (_data, _err, { workspaceId }) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.workspaces.detail(workspaceId),
+      })
+      // ← ADD THIS: refetch the list so chat_count is accurate from the server
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaces.all,
+      })
+    },
+  })
+}
+
+
+
+export function useCreateWorkspace() {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      name,
+      isPersonal = false,
+    }: {
+      name: string
+      isPersonal?: boolean
+    }) =>
+      api.post<WorkspaceRead>("/workspaces", {
+        name,
+        is_personal: isPersonal,
+      }),
+    onSuccess: (newWorkspace) => {
+      // Same pattern as useCreateChat — prepend to the cached list
+      // so the new workspace appears instantly without a refetch.
+      queryClient.setQueryData<WorkspaceRead[]>(queryKeys.workspaces.all, (old) => {
+        const list = old ?? []
+        if (list.some((w) => w.id === newWorkspace.id)) return list
+        return [newWorkspace, ...list]
       })
     },
   })

@@ -17,6 +17,7 @@ export interface WorkspaceRead {
   is_personal: boolean
   created_at: string
   chats: ChatRead[]   // ← included by the API directly on the workspace
+  chat_count: number
 }
 
 export interface DocumentRead {
