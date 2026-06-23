@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useApiClient } from "@/hooks/use-api-client"
 import { queryKeys } from "@/lib/query-keys"
 import { ChatRead, WorkspaceRead } from "@/lib/types"
+import { useRouter } from "next/navigation"
 
 export function useWorkspaces(enabled = false) {
   const api = useApiClient()
@@ -10,6 +11,47 @@ export function useWorkspaces(enabled = false) {
     queryKey: queryKeys.workspaces.all,
     queryFn: () => api.get<WorkspaceRead[]>("/workspaces"),
     enabled,
+  })
+}
+
+export function useWorkspaceDelete() {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  return useMutation({
+    mutationFn: (workspaceId: string) => api.delete(`/workspaces/${workspaceId}`),
+    onSuccess: (_data, workspaceId) => {
+      // Remove from list cache immediately — no refetch needed
+      queryClient.setQueryData<WorkspaceRead[]>(queryKeys.workspaces.all, (old) =>
+        old?.filter((w) => w.id !== workspaceId) ?? []
+      )
+      // Drop the detail cache for this workspace
+      queryClient.removeQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
+      router.push("/workspaces")
+    },
+  })
+
+}
+
+export function useWorkspaceRename() {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+ 
+  return useMutation({
+    mutationFn: ({ workspaceId, name }: { workspaceId: string; name: string }) =>
+      api.patch<WorkspaceRead>(`/workspaces/${workspaceId}`, { name }),
+    onSuccess: (updated) => {
+      // Update the name in the list cache
+      queryClient.setQueryData<WorkspaceRead[]>(queryKeys.workspaces.all, (old) =>
+        old?.map((w) => (w.id === updated.id ? { ...w, name: updated.name } : w)) ?? []
+      )
+      // Update the detail cache if it exists
+      queryClient.setQueryData<WorkspaceRead>(
+        queryKeys.workspaces.detail(updated.id),
+        (old) => (old ? { ...old, name: updated.name } : old)
+      )
+    },
   })
 }
 

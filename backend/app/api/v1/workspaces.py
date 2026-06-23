@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlmodel import Session
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import get_async_db, get_current_user, get_db
+from app.api.deps import get_async_db, get_current_user, get_db, get_sync_db
 from app.models import Chat, Document, User, Workspace
 from app.schemas.documents import DocumentRead, ChatWorkspaceUpdate
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
@@ -80,19 +80,24 @@ def get_workspace(
 
 
 @router.patch("/{workspace_id}", response_model=WorkspaceRead)
-async def update_workspace(
+def update_workspace(
     workspace_id: UUID,
     payload: WorkspaceUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
 ):
-    workspace = await _get_owned_workspace(workspace_id, current_user.id, db)
-    if payload.name is not None:
-        workspace.name = payload.name
-    db.add(workspace)
-    await db.commit()
-    await db.refresh(workspace)
-    return workspace
+    db_workspace = db.get(Workspace, workspace_id)
+    if not db_workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    workspace_data = payload.model_dump(exclude_unset=True)
+
+    db_workspace.sqlmodel_update(workspace_data)
+
+    db.add(db_workspace)
+    db.commit()
+    db.refresh(db_workspace)
+    return db_workspace
 
 
 @router.delete("/{workspace_id}", status_code=204)
