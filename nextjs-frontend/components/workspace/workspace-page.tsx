@@ -36,8 +36,8 @@ export function WorkspacePage({ workspaceId, initialWorkspace }: WorkspacePagePr
       <WorkspaceTopNav
         title={workspace.name}
         fileCount={fileCount}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        //viewMode={viewMode}
+        //onViewModeChange={setViewMode}
       />
 
       {/* Main content */}

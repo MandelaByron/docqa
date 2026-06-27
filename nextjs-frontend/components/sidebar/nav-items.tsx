@@ -8,12 +8,11 @@ import {
 from '../ui/sidebar'
 
 
-import { MessageSquarePlus, Search, LayoutGrid } from "lucide-react"
+import { MessageSquarePlus, Search } from "lucide-react"
 
 const navItems = [
     { label: "New Chat",   icon: MessageSquarePlus, href: "#" },
     { label: "Search",     icon: Search,            href: "#" },
-    { label: "Workspaces", icon: LayoutGrid,         href: "/workspaces" },
   ]
 const NavItems = () => {
   return (

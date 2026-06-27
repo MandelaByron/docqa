@@ -31,7 +31,7 @@ model = AnthropicModel('claude-sonnet-4-5')
 class AppDeps:
     db: get_async_db
     vector_store: PineconeVectorStore
-    document_id: UUID
+    chat_id: UUID
 
 
 agent = Agent(
@@ -84,14 +84,14 @@ async def retrieve(context: RunContext[AppDeps], search_query: str) -> str:
         context: The call context.
         search_query: The search query.
     """
-    document_id = context.deps.document_id
+    chat_id = context.deps.chat_id
 
     retriever = context.deps.vector_store.as_retriever(
             search_type="mmr",
             search_kwargs={
                 "k": 5,
                 "filter": {
-                    "document_id": str(document_id)
+                    "chat_id": str(chat_id)
                 },
             },
     )
@@ -117,7 +117,7 @@ async def chat(request: Request, chat_id: UUID, current_user: User = Depends(get
     deps = AppDeps(
         db=None,
         vector_store=vector_store,
-        document_id=chat.document_id,
+        chat_id=chat.id
     )
     accept = request.headers.get('accept', SSE_CONTENT_TYPE)
     try:

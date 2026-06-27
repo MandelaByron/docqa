@@ -9,20 +9,15 @@ class DocumentBase(BaseModel):
 class ChatWorkspaceUpdate(BaseModel):
     chat_id: UUID
 class DocumentCreate(BaseModel):
-    """
-    Payload the frontend sends after Uploadthing completes the client-side upload.
-    The three fields mirror exactly what Uploadthing's onClientUploadComplete
-    callback exposes: file.ufsUrl, file.name, file.type.
-    """
     url: HttpUrl
     filename: str
     mime_type: str
+    chat_id: UUID
     
 class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    workspace_id: UUID | None = None
     file_url: str 
     filename: str
     mime_type: str

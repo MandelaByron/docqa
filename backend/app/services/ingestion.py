@@ -103,10 +103,8 @@ def ingest_document(document_id: UUID, db: Session) -> None:
             chunk_ids.append(chunk_id)
             chunk.metadata.update({
                 "document_id": str(document_id),
-                "workspace_id": str(doc.workspace_id),
                 "filename": doc.filename,
-                # "page" is already in metadata from PyPDFLoader (0-indexed).
-                # We rename it to page_number for clarity in citations.
+                "chat_id": str(doc.chat_id),
                 "page_number": chunk.metadata.get("page", 0) + 1,
                 "chunk_id": chunk_id,
             })

@@ -6,20 +6,16 @@ from app.models.user import MessageRole, MessageStatus
 from .documents import DocumentRead
 
 class ChatCreate(BaseModel):
-    """Sent by the frontend when the user clicks 'Start chatting'."""
-    document_id: UUID
-    # Optional — falls back to the document filename on the server
-    title: Optional[str] = None
+    title: str
  
  
 class ChatRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
  
     id: UUID
-    document_id: UUID
     title: str
     created_at: datetime
-    document: DocumentRead
+    documents: list[DocumentRead]
 
 class MessageCreate(BaseModel):
     """Single message — used internally if needed."""

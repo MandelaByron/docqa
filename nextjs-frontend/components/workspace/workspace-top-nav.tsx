@@ -7,8 +7,8 @@ export type ViewMode = "split" | "pdf-only" | "chat-only"
 interface WorkspaceTopNavProps {
   title: string
   fileCount: number
-  viewMode: ViewMode
-  onViewModeChange: (mode: ViewMode) => void
+  //viewMode: ViewMode
+  //onViewModeChange: (mode: ViewMode) => void
 }
 
 

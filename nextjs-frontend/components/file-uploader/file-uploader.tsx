@@ -1,70 +1,52 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { generateUploadDropzone } from "@uploadthing/react"
-import { MessageSquare } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useCreateChat } from "@/hooks/use-chats"
 import { useProcessDocument } from "@/hooks/use-documents"
 import { ApiError } from "@/lib/api-client"
-import type { DocumentRead } from "@/lib/types"
 import type { OurFileRouter } from "@/app/api/uploadthing/core"
 
 const UploadDropzone = generateUploadDropzone<OurFileRouter>()
 
 export function FileUploader() {
   const router = useRouter()
-  const processDocument = useProcessDocument()
   const createChat = useCreateChat()
+  const processDocument = useProcessDocument()
 
-  const [docRecord, setDocRecord] = useState<DocumentRead | null>(null)
-
-  const isProcessing = processDocument.isPending
-  const isCreatingChat = createChat.isPending
-  const isReady = !!docRecord && !isProcessing
-  const isBusy = isProcessing || isCreatingChat
+  const isBusy = createChat.isPending || processDocument.isPending
 
   const handleUploadComplete = async (file: {
     url: string
     name: string
     mimeType: string
   }) => {
-    setDocRecord(null)
-
     try {
-      const record = await processDocument.mutateAsync({
+      // Step 1 — create the chat immediately using the filename as title.
+      // Strip the extension for a cleaner title e.g. "Nike_Annual_Report_2023"
+      const title = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ")
+      const chat = await createChat.mutateAsync({ title })
+
+      // Step 2 — redirect immediately. Processing happens in the background.
+      // useDocumentPolling on the chat page will notify the user when ready.
+      router.push(`/chat/${chat.id}`)
+
+      // Step 3 — kick off ingestion after redirect (fire and forget from UI perspective)
+      // The chat page polls for completion via useDocumentPolling.
+      processDocument.mutate({
         url: file.url,
         filename: file.name,
         mime_type: file.mimeType,
-      })
-
-      setDocRecord(record)
-
-      toast.success("File uploaded", {
-        description: `${file.name} is being processed.`,
-        position: "top-right",
+        chat_id: chat.id,
       })
     } catch (err) {
       const message = err instanceof ApiError ? err.detail : "Something went wrong."
-      toast.error("Processing failed", {
+      toast.error("Upload failed", {
         description: message,
         position: "top-right",
       })
-    }
-  }
-
-  const handleStartChat = async () => {
-    if (!docRecord) return
-
-    try {
-      const chat = await createChat.mutateAsync({ documentId: docRecord.id })
-      router.push(`/chat/${chat.id}`)
-    } catch (err) {
-      const message = err instanceof ApiError ? err.detail : "Could not start chat."
-      toast.error("Error", { description: message, position: "top-right" })
     }
   }
 
@@ -86,12 +68,11 @@ export function FileUploader() {
           button: cn(
             "mb-2 rounded-md px-4 py-2 text-sm font-medium transition-all duration-150",
             "bg-fuchsia-800 hover:bg-fuchsia-700 active:scale-[0.98]",
-            "shadow-sm hover:shadow-md",
             "ut-uploading:opacity-70 ut-uploading:cursor-not-allowed",
           ),
         }}
         content={{
-          label: docRecord ? docRecord.filename : "Drop a file here",
+          label: "Drop a file here",
           allowedContent: "PDF, DOC, DOCX, TXT — up to 32MB",
         }}
         onClientUploadComplete={(res) => {
@@ -99,40 +80,12 @@ export function FileUploader() {
           handleUploadComplete({ url, name, mimeType })
         }}
         onUploadError={(error) => {
-          console.error("Upload error:", error)
           toast.error("Upload failed", {
             description: error.message,
             position: "top-right",
           })
         }}
       />
-
-      {isReady && (
-        <p className="text-center text-[12px] text-white/35">
-          Ready — start a chat with{" "}
-          <span className="text-white/55">{docRecord.filename}</span>
-        </p>
-      )}
-
-      <div className="flex gap-2">
-        <Button
-          disabled={!isReady || isBusy}
-          onClick={handleStartChat}
-          className={cn(
-            "flex-1 h-9 text-[13px] font-medium gap-2 transition-all duration-150",
-            isReady && !isBusy
-              ? "bg-white text-black hover:bg-white/90"
-              : "bg-white/[0.06] text-white/40 cursor-not-allowed hover:bg-white/[0.06]",
-          )}
-        >
-          <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} />
-          {isProcessing
-            ? "Processing…"
-            : isCreatingChat
-              ? "Starting chat…"
-              : "Start chatting"}
-        </Button>
-      </div>
     </div>
   )
 }

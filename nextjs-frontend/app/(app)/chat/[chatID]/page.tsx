@@ -19,14 +19,15 @@ export default async function ChatPage(props: { params: Promise<{ chatID: string
   ])
  
   if (!chat) redirect("/")
-
   return (
+    <>  
     <ChatWithPdf
       chatId={chatID}
       chatTitle={chat.title}
       initialMessages={messages}
-      fileUrl={chat.file_url}
+      documents={chat.documents ?? []}
     />
+    </>
   )
 }
 

@@ -10,7 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import httpx
 
 from app.api.deps import get_current_user, get_async_db, get_sync_db
-from app.models import User, Document, Workspace
+from app.models import User, Document, Chat
 from app.schemas.documents import DocumentRead, DocumentCreate, DocumentBase
 from app.services import storage, ingestion, rag
 
@@ -52,6 +52,8 @@ async def process_document(
         mime_type=payload.mime_type,
         size_bytes= size_bytes,
         status="pending",
+
+        chat_id=payload.chat_id
     )
     db.add(doc)
     await db.commit()

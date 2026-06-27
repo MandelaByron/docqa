@@ -16,55 +16,24 @@ router = APIRouter(prefix="/chats", tags=["chats"])
 
 
 @router.post("/", response_model=ChatRead, status_code=201)
-def create_or_get_chat(
+def create_chat(
     payload: ChatCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Idempotent — if a chat already exists for this document, return it.
-    This makes 'Start chatting' safe to call multiple times without
-    creating duplicate records.
 
-    Returns 404 if the document doesn't exist or doesn't belong to the
-    current user (via the uploaded_by check).
-    """
-    # Verify the document exists and belongs to this user
-    doc_result = db.exec(
-        select(Document).where(
-            Document.id == payload.document_id,
-            Document.uploaded_by == current_user.id,
-        )
+    title = payload.title
+
+
+    new_chat = Chat(
+        created_by=current_user.id,
+        title=title,
     )
-    doc = doc_result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found.",
-        )
-
-    # Return existing chat if one already exists for this document
-    existing = db.exec(
-        select(Chat).where(Chat.document_id == payload.document_id)
-    )
-    chat = existing.scalar_one_or_none()
-    if chat:
-        return chat
-
-    # Derive a title from the document filename if none was provided
-    title = payload.title or _title_from_filename(doc.filename)
-
-    new_chat = db.get(Chat, payload.document_id)
-    if new_chat is None:
-        new_chat = Chat(
-            document_id=payload.document_id,
-            created_by=current_user.id,
-            title=title,
-        )
-        db.add(new_chat)
-        db.commit()
-        db.refresh(new_chat)
+    db.add(new_chat)
+    db.commit()
+    db.refresh(new_chat)
     return new_chat
+
 @router.get("/fetch_chats", response_model=list[ChatRead])
 def get_chats(
     current_user: User = Depends(get_current_user),

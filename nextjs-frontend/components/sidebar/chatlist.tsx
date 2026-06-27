@@ -24,7 +24,7 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 
-import AddToWorkspaceSubmenu from "./add-to-workspace"
+
 
 export default function ChatList() {
     const pathname = usePathname()
@@ -111,7 +111,6 @@ export default function ChatList() {
                       <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <AddToWorkspaceSubmenu chat={chat} />
                       <DropdownMenuItem 
                       onClick={() => setPendingDelete(chat)}
                       className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12.5px] text-red-400/80 hover:text-red-300 hover:bg-red-500/8 cursor-pointer transition-colors outline-none"

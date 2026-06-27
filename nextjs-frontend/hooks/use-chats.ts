@@ -34,19 +34,10 @@ export function useDeleteChat() {
 export function useCreateChat() {
   const api = useApiClient()
   const queryClient = useQueryClient()
-
+ 
   return useMutation({
-    mutationFn: ({
-      documentId,
-      title,
-    }: {
-      documentId: string
-      title?: string
-    }) =>
-      api.post<ChatRead>("/chats", {
-        document_id: documentId,
-        ...(title ? { title } : {}),
-      }),
+    mutationFn: ({ title }: { title: string }) =>
+      api.post<ChatRead>("/chats", { title }),
     onSuccess: (newChat) => {
       queryClient.setQueryData<ChatRead[]>(queryKeys.chats.all, (old) => {
         const list = old ?? []

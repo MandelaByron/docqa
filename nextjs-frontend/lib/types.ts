@@ -1,10 +1,12 @@
+import { UUID } from "crypto"
+
 export interface ChatRead {
-  id: string
+  id: UUID
   workspace_id: string | null
   document_id: string | null
   title: string
   created_at: string
-  document: DocumentRead | null
+  documents: DocumentRead[]
 }
 
 export interface WorkspaceRead {
@@ -24,7 +26,7 @@ export interface DocumentRead {
   id: string
   workspace_id: string | null
   filename: string
-  file_url: string | null
+  file_url: string
   mime_type: string
   size_bytes: number
   status: "pending" | "processing" | "ready" | "failed"

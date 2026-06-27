@@ -1,5 +1,5 @@
 import { UIMessage } from 'ai';
-
+import { ChatRead } from '@/lib/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Shape of what FastAPI returns from GET /chats/{chatId}/messages
@@ -29,11 +29,10 @@ export async function loadMessages(chatId: string, token: string): Promise<UIMes
     return rows.map((r) => r.ui_message)
   }
 
-export async function loadChat(chatId: string, token: string) {
+export async function loadChat(chatId: string, token: string): Promise<ChatRead> {
     const res = await fetch(`${API_URL}/chats/${chatId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     })
-    if (!res.ok) return null
-    return res.json() as Promise<{ id: string; title: string; file_url: string | null }>
+    return res.json()
   }
